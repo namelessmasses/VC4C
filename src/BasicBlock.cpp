@@ -248,7 +248,9 @@ bool BasicBlock::fallsThroughToNextBlock(bool useCFGIfAvailable) const
     {
         auto lastBranchCond = findLastSettingOfFlags(lastBranchIt);
         auto secondLastBranchCond = findLastSettingOfFlags(secondLastBranchIt);
-        if(lastBranchCond == secondLastBranchCond)
+        const bool sameBranchCondition = (lastBranchCond.has_value() == secondLastBranchCond.has_value()) &&
+            (!lastBranchCond.has_value() || (*lastBranchCond == *secondLastBranchCond));
+        if(sameBranchCondition)
             // the branches are only guaranteed to cover all cases if they refer to the same branch condition
             return false;
     }

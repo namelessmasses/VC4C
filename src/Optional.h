@@ -11,7 +11,7 @@
 
 #include <functional>
 #include <type_traits>
-#if __has_include(<optional>) && __cplusplus >= 201703L
+#if __has_include(<optional>) //&& __cplusplus >= 201703L
 #include <optional>
 template <typename T>
 using OptionalBase = std::optional<T>;
@@ -80,7 +80,6 @@ namespace vc4c
 
             // TODO need destructor which skips for EMPTY?? Or make sure EMPTY value is valid value?
 
-            compact_optional& operator=(const compact_optional& other) = default;
             compact_optional& operator=(compact_optional&& other) noexcept = default;
 
             compact_optional& operator=(const T& val)
@@ -241,7 +240,7 @@ namespace vc4c
             return has_value() ? (*this)->to_string() : "-";
         }
 
-#if __cplusplus < 201703L
+#if 1 //__cplusplus < 201703L
         bool has_value() const
         {
             return static_cast<bool>(*this);

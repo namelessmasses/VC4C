@@ -18,10 +18,12 @@
 #include "CompilationError.h"
 #include "Optional.h"
 
-#if __cplusplus > 201402L
+#if defined(__clang__) || defined(__GNUC__)
+#define NODISCARD __attribute__((warn_unused_result))
+#elif __cplusplus > 201402L
 #define NODISCARD [[nodiscard]]
 #else
-#define NODISCARD __attribute__((warn_unused_result))
+#define NODISCARD
 #endif
 
 #if __cplusplus > 201402L
