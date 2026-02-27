@@ -948,7 +948,8 @@ qpu_asm::DecoratedInstruction CombinedOperation::convertToAsm(const FastMap<cons
         throw CompilationError(CompilationStep::CODE_GENERATION,
             "Can't map combined instruction with two distinct immediate arguments", to_string());
 
-    if(addOp->getOutput() && addOp->getOutput() == mulOp->getOutput() &&
+    if(addOp->getOutput().has_value() && mulOp->getOutput().has_value() &&
+        (*addOp->getOutput() == *mulOp->getOutput()) &&
         addInstr.getAddOutput() != mulInstr.getMulOutput())
         throw CompilationError(CompilationStep::CODE_GENERATION,
             "Shared output for combined instructions is wrongly mapped to different output registers", to_string());

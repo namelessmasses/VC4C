@@ -380,8 +380,9 @@ void ValueRange::update(const Optional<Value>& constant, const FastMap<const Loc
         extendBoundaries(
             *lit, constant->type.isFloatingType(), constant->checkImmediate(), constant->isUnsignedInteger());
     }
-    else if(auto vec = constant & &Value::checkVector)
+    else if(constant && constant->checkVector())
     {
+        auto vec = constant->checkVector();
         if(constant->type.isFloatingType())
         {
             double min = std::numeric_limits<double>::max();

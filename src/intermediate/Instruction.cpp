@@ -167,7 +167,8 @@ bool IntermediateInstruction::operator==(const IntermediateInstruction& other) c
     if(signal != other.signal || unpackMode != other.unpackMode || packMode != other.packMode ||
         conditional != other.conditional || setFlags != other.setFlags || decoration != other.decoration)
         return false;
-    if(output != other.output || arguments != other.arguments)
+    if((output.has_value() != other.output.has_value()) ||
+        (output.has_value() && (*output != *other.output)) || arguments != other.arguments)
         return false;
     return innerEquals(other);
 }

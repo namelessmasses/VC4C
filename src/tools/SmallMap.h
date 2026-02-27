@@ -137,7 +137,8 @@ namespace vc4c
                 if(it->first == reinterpret_cast<K>(TOMBSTONE))
                 {
                     // insert new element
-                    *it = std::make_pair(key, V{});
+                    it->first = key;
+                    it->second = V{};
                     sort();
                     return find(key)->second;
                 }
@@ -162,7 +163,9 @@ namespace vc4c
 
             void erase(const_iterator position)
             {
-                *const_cast<iterator>(position) = std::make_pair(reinterpret_cast<K>(TOMBSTONE), V{});
+                auto it = const_cast<iterator>(position);
+                it->first = reinterpret_cast<K>(TOMBSTONE);
+                it->second = V{};
                 sort();
             }
 
@@ -179,7 +182,11 @@ namespace vc4c
 
             void clear()
             {
-                data.fill(std::make_pair(reinterpret_cast<K>(TOMBSTONE), V{}));
+                for(auto& elem : data)
+                {
+                    elem.first = reinterpret_cast<K>(TOMBSTONE);
+                    elem.second = V{};
+                }
             }
 
             template <typename... Args>
@@ -193,7 +200,8 @@ namespace vc4c
                 if(it->first == reinterpret_cast<K>(TOMBSTONE))
                 {
                     auto key = tmp.first;
-                    *it = std::move(tmp);
+                    it->first = tmp.first;
+                    it->second = std::move(tmp.second);
                     sort();
                     return std::make_pair(find(key), true);
                 }
