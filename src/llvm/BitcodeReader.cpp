@@ -75,6 +75,63 @@ static void dumpLLVM(const T* val)
 }
 LCOV_EXCL_STOP
 
+static const llvm::Type* getPointeeType(const llvm::Type* type)
+{
+    if(type == nullptr || !type->isPointerTy())
+        return nullptr;
+
+    const auto* ptrType = llvm::cast<const llvm::PointerType>(type);
+
+    struct LLVMOpaquePointerHelper
+    {
+        static auto isOpaquePointer(const llvm::PointerType* ptr, int) -> decltype(ptr->isOpaque(), bool())
+        {
+            return ptr->isOpaque();
+        }
+
+        static bool isOpaquePointer(const llvm::PointerType*, long)
+        {
+            return false;
+        }
+
+        static auto getPointeeFromPointer(const llvm::PointerType* ptr, int)
+            -> decltype(ptr->getNonOpaquePointerElementType(), static_cast<const llvm::Type*>(nullptr))
+        {
+            return ptr->getNonOpaquePointerElementType();
+        }
+
+        static auto getPointeeFromPointer(const llvm::PointerType* ptr, long)
+            -> decltype(ptr->getElementType(), static_cast<const llvm::Type*>(nullptr))
+        {
+            return ptr->getElementType();
+        }
+
+        static auto getPointeeFromType(const llvm::Type* ptr, int)
+            -> decltype(ptr->getPointerElementType(), static_cast<const llvm::Type*>(nullptr))
+        {
+            return ptr->getPointerElementType();
+        }
+
+        static const llvm::Type* getPointeeFromType(const llvm::Type*, long)
+        {
+            return nullptr;
+        }
+    };
+
+    if(LLVMOpaquePointerHelper::isOpaquePointer(ptrType, 0))
+        return nullptr;
+    if(const auto* pointeeType = LLVMOpaquePointerHelper::getPointeeFromPointer(ptrType, 0))
+        return pointeeType;
+    return LLVMOpaquePointerHelper::getPointeeFromType(type, 0);
+}
+
+static const llvm::StructType* getPointeeStructType(const llvm::Type* type)
+{
+    if(auto pointeeType = getPointeeType(type); pointeeType && pointeeType->isStructTy())
+        return llvm::cast<const llvm::StructType>(pointeeType);
+    return nullptr;
+}
+
 BitcodeReader::BitcodeReader(const precompilation::TypedCompilationData<SourceType::LLVM_IR_BIN>& inputData)
 {
     auto tmp = precompilation::loadLLVMModule(inputData, nullptr);
@@ -124,6 +181,7 @@ void BitcodeReader::extractKernelMetadata(Module& module, Method& kernel, const 
     }
     if(auto metadata = func.getMetadata("kernel_arg_access_qual"))
     {
+        (void)metadata;
         // access qualifiers for image arguments, e.g. "!3 = !{!"none", !"none"}"
         // XXX what to do with them? Only valid for images
         // if we don't use image-config for writing images, we could e.g. don't write it for write-only images
@@ -151,6 +209,7 @@ void BitcodeReader::extractKernelMetadata(Module& module, Method& kernel, const 
     {
         // base types, e.g. for type-defs, e.g. "!4 = !{!"float*", !"float*"}"
         // is not used
+        (void)metadata;
     }
     if(auto metadata = func.getMetadata("kernel_arg_type_qual"))
     {
@@ -567,11 +626,10 @@ DataType BitcodeReader::toDataType(Module& module, const llvm::Type* type, Optio
                             << type->getIntegerBitWidth() << logging::endl;
         return TYPE_INT64;
     }
-    if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
+    if(const llvm::StructType* str = getPointeeStructType(type))
     {
         // recognize image types - taken from
         // https://github.com/KhronosGroup/SPIRV-LLVM/blob/khronos/spirv-3.6.1/lib/SPIRV/SPIRVUtil.cpp (#isOCLImageType)
-        const llvm::StructType* str = llvm::cast<const llvm::StructType>(type->getPointerElementType());
         if(str->isOpaque() && str->getName().find("opencl.image") == 0)
         {
             auto dimensions = str->getName().find('3') != llvm::StringRef::npos ?
@@ -617,7 +675,7 @@ DataType BitcodeReader::toDataType(Module& module, const llvm::Type* type, Optio
     }
     if(type->isPointerTy())
     {
-        DataType elementType = toDataType(module, type->getPointerElementType());
+        DataType elementType = toDataType(module, getPointeeType(type));
         return DataType(module.createPointerType(elementType,
             overrideAddressSpace.value_or(toAddressSpace(static_cast<int32_t>(type->getPointerAddressSpace())))));
     }
@@ -640,11 +698,13 @@ static ParameterDecorations toParameterDecorations(const llvm::Argument& arg, Da
         deco = add_flag(deco, ParameterDecorations::READ_ONLY);
     if(type.getImageType())
     {
-        const llvm::StructType* str = llvm::cast<const llvm::StructType>(arg.getType()->getPointerElementType());
-        if(str->getName().find("ro_t") != std::string::npos)
-            deco = add_flag(deco, ParameterDecorations::READ_ONLY, ParameterDecorations::INPUT);
-        else if(str->getName().find("wo_t") != std::string::npos)
-            deco = add_flag(deco, ParameterDecorations::OUTPUT);
+        if(const llvm::StructType* str = getPointeeStructType(arg.getType()))
+        {
+            if(str->getName().find("ro_t") != std::string::npos)
+                deco = add_flag(deco, ParameterDecorations::READ_ONLY, ParameterDecorations::INPUT);
+            else if(str->getName().find("wo_t") != std::string::npos)
+                deco = add_flag(deco, ParameterDecorations::OUTPUT);
+        }
     }
     if(arg.hasInAllocaAttr() && isKernel)
     {
