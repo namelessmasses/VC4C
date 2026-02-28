@@ -255,15 +255,6 @@ namespace vc4c
         }
 
         template <typename Func>
-        std::enable_if_t<std::is_member_function_pointer<Func>::value &&
-                std::is_convertible<std::result_of_t<Func(const T&)>, bool>::value,
-            bool>
-        operator&(Func&& func) const
-        {
-            return has_value() && ((**this).*func)();
-        }
-
-        template <typename Func>
         std::enable_if_t<!std::is_member_function_pointer<Func>::value &&
                 std::is_convertible<std::result_of_t<Func(const T&)>, bool>::value,
             bool>
@@ -285,7 +276,9 @@ namespace vc4c
         }
 
         template <typename Func>
-        std::enable_if_t<std::is_pointer<std::result_of_t<Func(const T&)>>::value, std::result_of_t<Func(const T&)>>
+        std::enable_if_t<!std::is_member_function_pointer<Func>::value &&
+                std::is_pointer<std::result_of_t<Func(const T&)>>::value,
+            std::result_of_t<Func(const T&)>>
         operator&(Func&& func) const
         {
             return has_value() ? func(**this) : nullptr;
@@ -325,6 +318,17 @@ namespace vc4c
     Optional<R> make_optional(const R& value)
     {
         return Optional<R>(value);
+    }
+
+    struct Value;
+    
+    template <typename R>
+    Optional<R> make_optional()
+    {
+        static_assert(!std::is_same<R, Value>::value,
+            "Use NO_VALUE for Optional<Value> and EMPTY_NON_VALUE_OPTIONAL "
+            "for Optional<T> where T != Value.");
+        return {};
     }
 
     /*

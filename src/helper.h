@@ -346,15 +346,6 @@ namespace vc4c
         // These operators are defined as member operators to not interfere with any other operator, since any Type is
         // implicitly convertible to Pointer<Type>
         template <typename Func>
-        std::enable_if_t<std::is_member_function_pointer<Func>::value &&
-                std::is_convertible<std::result_of_t<Func(const T&)>, bool>::value,
-            bool>
-        operator&(Func&& func) const
-        {
-            return ptr && (ptr->*func)();
-        }
-
-        template <typename Func>
         std::enable_if_t<!std::is_member_function_pointer<Func>::value &&
                 std::is_convertible<std::result_of_t<Func(const T&)>, bool>::value,
             bool>

@@ -718,7 +718,7 @@ InstructionWalker VPM::insertFillDMA(Method& method, InstructionWalker it, const
     it = insertWriteVPM(method, it, source, cacheEntry);
     it = insertWriteRAM(method, it, memoryAddress, cacheEntry);
 
-    if(auto literalCount = (numCopies.getConstantValue() & &Value::getLiteralValue))
+    if(auto literalCount = numCopies.getConstantLiteralValue())
     {
         for(unsigned i = 1; i < literalCount->unsignedInt(); ++i)
         {
@@ -907,7 +907,7 @@ NODISCARD static InstructionWalker insertWriteDMASetup(InstructionWalker it, Val
     }
 
     auto toStaticValue = [](const Value& val) -> uint8_t {
-        return static_cast<uint8_t>((val.getConstantValue() & &Value::getLiteralValue).value_or(0_lit).unsignedInt());
+        return static_cast<uint8_t>(val.getConstantLiteralValue().value_or(0_lit).unsignedInt());
     };
 
     auto depth = getSourceValue(rowDepth);
@@ -1005,7 +1005,7 @@ NODISCARD static InstructionWalker insertReadDMASetup(InstructionWalker it, Valu
     }
 
     auto toStaticValue = [](const Value& val) -> uint8_t {
-        return static_cast<uint8_t>((val.getConstantValue() & &Value::getLiteralValue).value_or(0_lit).unsignedInt());
+        return static_cast<uint8_t>(val.getConstantLiteralValue().value_or(0_lit).unsignedInt());
     };
 
     // If the data is packed, have a pitch of 1 unit (e.g. 1 byte/half-word/word offset depending on type)

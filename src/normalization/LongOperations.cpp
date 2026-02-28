@@ -569,7 +569,7 @@ void normalization::lowerLongOperation(
         {
             // saturate the low part if the high part is not zero (for unsigned) or 0/-1 (for signed)
             bool isUnsigned = false;
-            if(auto lit = call->getArgument(1) ? call->assertArgument(1).getConstantValue() & &Value::getLiteralValue :
+            if(auto lit = call->getArgument(1) ? call->assertArgument(1).getConstantLiteralValue() :
                                                  Optional<Literal>{})
                 isUnsigned = lit->unsignedInt() == VC4CL_UNSIGNED;
             auto outValue = call->getOutput().value();

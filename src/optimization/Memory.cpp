@@ -1699,8 +1699,8 @@ static bool isNextByteOffset(const LoweredRegisterAccessGroup& group, const Valu
         // first offset
         return !byteOffset.isUndefined();
 
-    auto constantBaseOffset = group.baseByteOffset.getConstantValue() & &Value::getLiteralValue;
-    auto constantByteOffset = byteOffset.getConstantValue() & &Value::getLiteralValue;
+    auto constantBaseOffset = group.baseByteOffset.getConstantLiteralValue();
+    auto constantByteOffset = byteOffset.getConstantLiteralValue();
     if(constantBaseOffset && constantByteOffset)
         return constantBaseOffset->unsignedInt() + group.groupedAccessType.getLogicalWidth() ==
             constantByteOffset->unsignedInt();

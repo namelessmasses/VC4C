@@ -220,7 +220,7 @@ InstructionWalker intermediate::insertVectorInsertion(InstructionWalker it, Meth
         // those
         Optional<Literal> staticVectorWidth = Literal(value.type.getVectorWidth());
         if(dynamicValueWidth)
-            staticVectorWidth = dynamicValueWidth->getConstantValue() & &Value::getLiteralValue;
+            staticVectorWidth = dynamicValueWidth->getConstantLiteralValue();
         unsigned maskLit = (1u << staticVectorWidth.value_or(0_lit).unsignedInt()) - 1u;
         auto shiftedMask = method.addNewLocal(TYPE_INT32, "%vector_mask");
         ConditionCode maskCond = COND_ZERO_CLEAR;

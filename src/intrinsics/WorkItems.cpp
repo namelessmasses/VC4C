@@ -43,38 +43,30 @@ static InstructionDecorations getDimension(uint32_t dimension) noexcept
 
 static InstructionDecorations getDimension(const Value& val)
 {
-    // NOTE: Use explicit optional access here instead of Optional::operator& with member pointers,
-    // since C++17 compilers can report ambiguous overload resolution for that shorthand.
-    if(auto constantValue = val.getConstantValue())
-    {
-        if(auto literal = constantValue->getLiteralValue())
-            return getDimension(literal->unsignedInt());
-    }
+    if(auto literal = val.getConstantLiteralValue())
+        return getDimension(literal->unsignedInt());
     return InstructionDecorations::NONE;
 }
 
 static NODISCARD InstructionWalker intrinsifyReadWorkGroupInfo(Method& method, InstructionWalker it, const Value& arg,
     const std::vector<BuiltinLocal::Type>& locals, const Value& defaultValue, InstructionDecorations decoration)
 {
-    if(auto constantValue = arg.getConstantValue())
+    if(auto lit = arg.getConstantLiteralValue())
     {
-        if(auto lit = constantValue->getLiteralValue())
+        Value src = UNDEFINED_VALUE;
+        if(lit->unsignedInt() < locals.size())
         {
-            Value src = UNDEFINED_VALUE;
-            if(lit->unsignedInt() < locals.size())
-            {
-                const auto* builtin = method.findOrCreateBuiltin(locals[lit->unsignedInt()]);
-                src = builtin->createReference();
-                decoration = add_flag(decoration, builtin->getDecorations());
-            }
-            else
-            {
-                src = defaultValue;
-            }
-            it.reset(createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), src));
-            it->addDecorations(decoration);
-            return it;
+            const auto* builtin = method.findOrCreateBuiltin(locals[lit->unsignedInt()]);
+            src = builtin->createReference();
+            decoration = add_flag(decoration, builtin->getDecorations());
         }
+        else
+        {
+            src = defaultValue;
+        }
+        it.reset(createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), src));
+        it->addDecorations(decoration);
+        return it;
     }
     // set default value first and always, so a path for the destination local is guaranteed
     assign(it, it->getOutput().value()) = defaultValue;
@@ -111,48 +103,45 @@ static NODISCARD InstructionWalker intrinsifyReadWorkItemInfo(Method& method, In
      * -> res = (UNIFORM >> (dim * 8)) & 0xFF
      */
     const Local* itemInfo = method.findOrCreateBuiltin(local);
-    if(auto constantValue = arg.getConstantValue())
+    if(auto literalDim = arg.getConstantLiteralValue())
     {
-        if(auto literalDim = constantValue->getLiteralValue())
+        // NOTE: This forces the local_ids/local_sizes values to be on register-file A, but safes an instruction
+        // per read
+        switch(literalDim->unsignedInt())
         {
-            // NOTE: This forces the local_ids/local_sizes values to be on register-file A, but safes an instruction
-            // per read
-            switch(literalDim->unsignedInt())
-            {
-            case 0:
-                it.reset(
-                      createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
-                    .setUnpackMode(UNPACK_8A_32)
-                    .addDecorations(decoration)
-                    .addDecorations(InstructionDecorations::DIMENSION_X);
-                break;
-            case 1:
-                it.reset(
-                      createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
-                    .setUnpackMode(UNPACK_8B_32)
-                    .addDecorations(decoration)
-                    .addDecorations(InstructionDecorations::DIMENSION_Y);
-                break;
-            case 2:
-                it.reset(
-                      createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
-                    .setUnpackMode(UNPACK_8C_32)
-                    .addDecorations(decoration)
-                    .addDecorations(InstructionDecorations::DIMENSION_Z);
-                break;
-            case 3:
-                it.reset(
-                      createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
-                    .setUnpackMode(UNPACK_8D_32)
-                    .addDecorations(decoration);
-                break;
-            default:
-                it.reset(createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), INT_ZERO))
-                    .addDecorations(decoration);
-                break;
-            }
-            return it;
+        case 0:
+            it.reset(
+                  createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
+                .setUnpackMode(UNPACK_8A_32)
+                .addDecorations(decoration)
+                .addDecorations(InstructionDecorations::DIMENSION_X);
+            break;
+        case 1:
+            it.reset(
+                  createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
+                .setUnpackMode(UNPACK_8B_32)
+                .addDecorations(decoration)
+                .addDecorations(InstructionDecorations::DIMENSION_Y);
+            break;
+        case 2:
+            it.reset(
+                  createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
+                .setUnpackMode(UNPACK_8C_32)
+                .addDecorations(decoration)
+                .addDecorations(InstructionDecorations::DIMENSION_Z);
+            break;
+        case 3:
+            it.reset(
+                  createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), itemInfo->createReference()))
+                .setUnpackMode(UNPACK_8D_32)
+                .addDecorations(decoration);
+            break;
+        default:
+            it.reset(createWithExtras<MoveOperation>(*it.get(), it->getOutput().value(), INT_ZERO))
+                .addDecorations(decoration);
+            break;
         }
+        return it;
     }
     Value tmp0 = assign(it, TYPE_INT8) = mul24(arg, 8_val);
     Value tmp1 = assign(it, TYPE_INT8) = as_unsigned{itemInfo->createReference()} >> tmp0;
@@ -176,13 +165,10 @@ static NODISCARD InstructionWalker intrinsifyReadLocalSize(Method& method, Instr
     {
         const auto& workGroupSizes = method.metaData.workGroupSizes;
         Optional<Literal> immediate;
-        // Same rationale as above: explicit dereference avoids ambiguous Optional::operator& overloads in C++17.
-        if(auto constantValue = arg.getConstantValue())
-        {
-            if(auto lit = constantValue->getLiteralValue())
-                // the dimension is a literal value -> look this dimension up
-                immediate = *lit;
-        }
+        // Use shared helper to keep C++17-safe constant-literal handling consistent across call-sites.
+        if(auto lit = arg.getConstantLiteralValue())
+            // the dimension is a literal value -> look this dimension up
+            immediate = *lit;
         else if(fixedSize == 1u)
             // all dimensions are 1 (for any set or not explicitly set dimension) -> take any of them
             immediate = Literal(0u);

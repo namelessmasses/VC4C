@@ -110,14 +110,14 @@ InstructionWalker periphery::insertFillLoweredRegister(Method& method, Instructi
     // NOTE: In contrast to READ/WRITE, we directly insert the code for FILL due to a) cache access not supporting
     // multi-element access and b) we currently can't optimize (e.g. combine) FILLs anyway. XXX Should be unified at
     // some point!
-    auto staticAddressOffset = addressOffset.getConstantValue() & &Value::getLiteralValue;
+    auto staticAddressOffset = addressOffset.getConstantLiteralValue();
     if(!staticAddressOffset)
     {
         auto writer = analysis::getSingleWriter(addressOffset);
         auto expr = writer ? Expression::createRecursiveExpression(*writer) : nullptr;
         staticAddressOffset = expr ? expr->getConstantExpression() & &Value::getLiteralValue : Optional<Literal>{};
     }
-    auto staticNumCopies = numCopies.getConstantValue() & &Value::getLiteralValue;
+    auto staticNumCopies = numCopies.getConstantLiteralValue();
     if(!staticNumCopies)
     {
         auto writer = analysis::getSingleWriter(numCopies);
@@ -156,7 +156,7 @@ InstructionWalker periphery::insertFillLoweredRegister(Method& method, Instructi
             // register element alignment, thus we can replicate the value across a single lowered register and then
             // treat identical to above (for filling same-width elements)
             Value replicatedElement = UNDEFINED_VALUE;
-            if(auto srcLiteral = src.getConstantValue() & &Value::getLiteralValue)
+            if(auto srcLiteral = src.getConstantLiteralValue())
             {
                 uint64_t value = srcLiteral->unsignedInt();
                 for(uint8_t typeWidth = src.type.getScalarBitCount();

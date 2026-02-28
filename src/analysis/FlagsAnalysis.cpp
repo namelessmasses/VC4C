@@ -422,8 +422,8 @@ static Optional<ComparisonData> checkUnsignedLessThan(
     {
         // check that the right inverted value is the inversion of the right value and that the right value is actually
         // a constant 2^x-1
-        auto rightInvertedConstant = rightInverted.getConstantValue() & &Value::getLiteralValue;
-        auto rightConstant = rightOperand.getConstantValue() & &Value::getLiteralValue;
+        auto rightInvertedConstant = rightInverted.getConstantLiteralValue();
+        auto rightConstant = rightOperand.getConstantLiteralValue();
         if(rightConstant && rightInvertedConstant &&
             rightInvertedConstant->unsignedInt() == ~rightConstant->unsignedInt() &&
             isPowerTwo(rightConstant->unsignedInt() + 1))
@@ -443,7 +443,7 @@ static Optional<ComparisonData> checkUnsignedLessThan(
     {
         // check that the left value is actually a constant (~2^x)-1
         // ~(2^x-1) & %val == 0 <=> 2^x-1 >= %val <=> 2^x > %val
-        auto lit = leftOperand.getConstantValue() & &Value::getLiteralValue;
+        auto lit = leftOperand.getConstantLiteralValue();
         if(lit & [](Literal lit) { return isPowerTwo(~lit.unsignedInt() + 1); })
         {
             leftOperand = Value(Literal(~lit->unsignedInt() + 1), leftOperand.type);
@@ -452,7 +452,7 @@ static Optional<ComparisonData> checkUnsignedLessThan(
 
         // check that the right value is actually a constant (~2^x)-1
         // %val & ~(2^x-1) == 0 <=> %val <= 2^x-1 <=> %val < 2^x
-        lit = rightOperand.getConstantValue() & &Value::getLiteralValue;
+        lit = rightOperand.getConstantLiteralValue();
         if(lit & [](Literal lit) { return isPowerTwo(~lit.unsignedInt() + 1); })
         {
             rightOperand = Value(Literal(~lit->unsignedInt() + 1), rightOperand.type);
@@ -515,7 +515,7 @@ static std::pair<const intermediate::IntermediateInstruction*, ConditionCode> fi
 
     auto trueWriterIt = std::find_if(writers.begin(), writers.end(), [](const LocalUser* writer) -> bool {
         auto source = writer->getMoveSource();
-        return source && source->getConstantValue() & &Value::getLiteralValue & &Literal::isTrue &&
+        return source && (source->getConstantLiteralValue() & &Literal::isTrue) &&
             dynamic_cast<const intermediate::ExtendedInstruction*>(writer);
     });
     if(trueWriterIt == writers.end())

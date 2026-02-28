@@ -423,6 +423,13 @@ namespace vc4c
          */
         Optional<Value> getConstantValue(bool transitive = true) const;
 
+        /**
+         * Returns the literal value of getConstantValue(), if the constant can be represented as a literal.
+         *
+         * This helper avoids repeated Optional member-pointer chaining at call-sites and is C++17 friendly.
+         */
+        Optional<Literal> getConstantLiteralValue(bool transitive = true) const noexcept;
+
         /*
          * Creates a zero-initializer Value for the given data-type.
          *

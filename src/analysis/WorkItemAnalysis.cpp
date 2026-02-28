@@ -371,7 +371,7 @@ static Optional<ActiveWorkItems> getWorkItemMask(
         // condition is not depending on work-item information, copy mask (if exists) of source branch
         return std::move(defaultValue);
 
-    auto literalLimit = otherValue.getConstantValue() & &Value::getLiteralValue;
+    auto literalLimit = otherValue.getConstantLiteralValue();
     if(!literalLimit)
         // bounds are not constant, so we don't know how much the condition is limited, since a branch cannot extend the
         // parent bounds, we can safely return them (if set)

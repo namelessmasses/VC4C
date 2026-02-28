@@ -1317,12 +1317,12 @@ InstructionWalker optimizations::combineArithmeticOperations(
     // exactly one local and one literal operand
     Value literalArg = UNDEFINED_VALUE;
     Value localArg = UNDEFINED_VALUE;
-    if(it->getArguments()[0].getConstantValue() & &Value::getLiteralValue)
+    if(it->getArguments()[0].getConstantLiteralValue())
     {
         literalArg = *it->getArguments()[0].getConstantValue();
         localArg = it->getArguments()[1];
     }
-    else if(it->getArguments()[1].getConstantValue() & &Value::getLiteralValue)
+    else if(it->getArguments()[1].getConstantLiteralValue())
     {
         literalArg = *it->getArguments()[1].getConstantValue();
         localArg = it->getArguments()[0];
@@ -1349,12 +1349,12 @@ InstructionWalker optimizations::combineArithmeticOperations(
 
     Value otherLiteralArg = UNDEFINED_VALUE;
     Value origArg = UNDEFINED_VALUE;
-    if(singleWriter->getArguments()[0].getConstantValue() & &Value::getLiteralValue)
+    if(singleWriter->getArguments()[0].getConstantLiteralValue())
     {
         otherLiteralArg = *singleWriter->getArguments()[0].getConstantValue();
         origArg = singleWriter->getArguments()[1];
     }
-    else if(singleWriter->getArguments()[1].getConstantValue() & &Value::getLiteralValue)
+    else if(singleWriter->getArguments()[1].getConstantLiteralValue())
     {
         otherLiteralArg = *singleWriter->getArguments()[1].getConstantValue();
         origArg = singleWriter->getArguments()[0];

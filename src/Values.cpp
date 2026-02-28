@@ -451,6 +451,13 @@ Optional<Value> Value::getConstantValue(bool transitive) const
     return isUndefined() ? *this : NO_VALUE;
 }
 
+Optional<Literal> Value::getConstantLiteralValue(bool transitive) const noexcept
+{
+    if(auto constant = getConstantValue(transitive))
+        return constant->getLiteralValue();
+    return make_optional<Literal>();
+}
+
 Optional<Value> Value::createZeroInitializer(DataType type)
 {
     if(type.isScalarType() || type.getPointerType())

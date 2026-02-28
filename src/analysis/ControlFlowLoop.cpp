@@ -81,7 +81,7 @@ Optional<Literal> InductionVariable::getStep() const
 
     if(auto stepWriter = otherArgument->getSingleWriter())
         return stepWriter->precalculate(4).first & &Value::getLiteralValue;
-    return otherArgument->getConstantValue() & &Value::getLiteralValue;
+    return otherArgument->getConstantLiteralValue();
 
     return {};
 }

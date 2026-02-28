@@ -111,8 +111,8 @@ static Optional<std::pair<Literal, Literal>> is64BitLiteralLoad(const Local* inp
     {
         auto lowSource = intermediate::getSourceValue(loc->lower->createReference());
         auto upSource = intermediate::getSourceValue(loc->upper->createReference());
-        auto lowLit = lowSource.getConstantValue() & &Value::getLiteralValue;
-        auto upLit = upSource.getConstantValue() & &Value::getLiteralValue;
+        auto lowLit = lowSource.getConstantLiteralValue();
+        auto upLit = upSource.getConstantLiteralValue();
         if(lowLit && upLit)
             return std::make_pair(*lowLit, *upLit);
     }
