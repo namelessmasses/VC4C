@@ -84,35 +84,41 @@ static const llvm::Type* getPointeeType(const llvm::Type* type)
 
     struct LLVMOpaquePointerHelper
     {
-        static auto isOpaquePointer(const llvm::PointerType* ptr, int) -> decltype(ptr->isOpaque(), bool())
+        template <typename T>
+        static auto isOpaquePointer(const T* ptr, int) -> decltype(ptr->isOpaque(), bool())
         {
             return ptr->isOpaque();
         }
 
-        static bool isOpaquePointer(const llvm::PointerType*, long)
+        template <typename T>
+        static bool isOpaquePointer(const T*, long)
         {
             return false;
         }
 
-        static auto getPointeeFromPointer(const llvm::PointerType* ptr, int)
+        template <typename T>
+        static auto getPointeeFromPointer(const T* ptr, int)
             -> decltype(ptr->getNonOpaquePointerElementType(), static_cast<const llvm::Type*>(nullptr))
         {
             return ptr->getNonOpaquePointerElementType();
         }
 
-        static auto getPointeeFromPointer(const llvm::PointerType* ptr, long)
+        template <typename T>
+        static auto getPointeeFromPointer(const T* ptr, long)
             -> decltype(ptr->getElementType(), static_cast<const llvm::Type*>(nullptr))
         {
             return ptr->getElementType();
         }
 
-        static auto getPointeeFromType(const llvm::Type* ptr, int)
+        template <typename T>
+        static auto getPointeeFromType(const T* ptr, int)
             -> decltype(ptr->getPointerElementType(), static_cast<const llvm::Type*>(nullptr))
         {
             return ptr->getPointerElementType();
         }
 
-        static const llvm::Type* getPointeeFromType(const llvm::Type*, long)
+        template <typename T>
+        static const llvm::Type* getPointeeFromType(const T*, long)
         {
             return nullptr;
         }
