@@ -87,7 +87,15 @@ namespace vc4c
     template <typename T>
     struct assert_literal
     {
-        constexpr static bool value = std::is_literal_type<T>::value && assert_trivial<T>::value;
+        // std::is_literal_type is deprecated in C++17 and removed in C++20.
+        // Keep it only for pre-C++17 toolchains and use non-deprecated traits otherwise.
+        constexpr static bool value =
+    #if __cplusplus < 201703L
+            std::is_literal_type<T>::value &&
+    #else
+            std::is_trivial<T>::value &&
+    #endif
+            assert_trivial<T>::value;
     };
 
     /*

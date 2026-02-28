@@ -692,7 +692,12 @@ InstructionWalker intrinsics::intrinsifyUnsignedIntegerDivisionByConstant(
     if(op.getFirstArg().type.getScalarBitCount() > 16)
         throw CompilationError(CompilationStep::NORMALIZER, "Division by constant may overflow for argument type",
             op.getFirstArg().type.to_string());
-    if(!(op.getSecondArg() & &Value::isLiteralValue) && !(op.getSecondArg() & &Value::checkVector))
+    /*
+     * C++17 (for CLang-19) has an ambiguous overload likely because the member functions have the same signature.
+     * Make this call explicit instead of using operator& overload on Optional::operator&. 
+     */
+    auto secondArg = op.getSecondArg();
+    if(!secondArg || (!secondArg->isLiteralValue() && !secondArg->checkVector()))
         throw CompilationError(CompilationStep::NORMALIZER, "Can only optimize division by constant", op.to_string());
 
     /*

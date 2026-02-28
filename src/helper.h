@@ -493,7 +493,12 @@ namespace vc4c
     }
 
     static_assert(std::is_trivial<Pointer<int32_t>>::value, "");
+#if __cplusplus < 201703L
     static_assert(std::is_literal_type<Pointer<int32_t>>::value, "");
+#else
+    static_assert(std::is_trivially_copyable<Pointer<int32_t>>::value, "");
+    static_assert(std::is_standard_layout<Pointer<int32_t>>::value, "");
+#endif
     static_assert(sizeof(Pointer<int32_t>) == sizeof(int32_t*), "");
 } // namespace vc4c
 
