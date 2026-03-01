@@ -499,6 +499,20 @@ static DataType& addToMap(DataType&& dataType, const llvm::Type* type, FastMap<c
     return typesMap.emplace(type, dataType).first->second;
 }
 
+static const llvm::Type* getPointerElementType(const llvm::Type* type)
+{
+#if LLVM_LIBRARY_VERSION >= 150
+    if(type == nullptr || !type->isPointerTy())
+        return nullptr;
+    const auto* pointerType = llvm::cast<const llvm::PointerType>(type);
+    if(pointerType->isOpaque())
+        return nullptr;
+    return pointerType->getNonOpaquePointerElementType();
+#else
+    return type != nullptr && type->isPointerTy() ? type->getPointerElementType() : nullptr;
+#endif
+}
+
 DataType BitcodeReader::toDataType(Module& module, const llvm::Type* type, Optional<AddressSpace> overrideAddressSpace)
 {
     if(type == nullptr)
@@ -567,23 +581,27 @@ DataType BitcodeReader::toDataType(Module& module, const llvm::Type* type, Optio
                             << type->getIntegerBitWidth() << logging::endl;
         return TYPE_INT64;
     }
-    if(type->isPointerTy() && type->getPointerElementType()->isStructTy())
+    if(type->isPointerTy())
     {
-        // recognize image types - taken from
-        // https://github.com/KhronosGroup/SPIRV-LLVM/blob/khronos/spirv-3.6.1/lib/SPIRV/SPIRVUtil.cpp (#isOCLImageType)
-        const llvm::StructType* str = llvm::cast<const llvm::StructType>(type->getPointerElementType());
-        if(str->isOpaque() && str->getName().find("opencl.image") == 0)
+        const llvm::Type* pointerElementType = getPointerElementType(type);
+        if(pointerElementType != nullptr && pointerElementType->isStructTy())
         {
-            auto dimensions = str->getName().find('3') != llvm::StringRef::npos ?
-                3 :
-                (str->getName().find('2') != llvm::StringRef::npos ? 2 : 1);
-            auto isImageArray = str->getName().find("array") != llvm::StringRef::npos;
-            auto isImageBuffer = str->getName().find("buffer") != llvm::StringRef::npos;
-            auto isSampled = false;
+            // recognize image types - taken from
+            // https://github.com/KhronosGroup/SPIRV-LLVM/blob/khronos/spirv-3.6.1/lib/SPIRV/SPIRVUtil.cpp (#isOCLImageType)
+            const llvm::StructType* str = llvm::cast<const llvm::StructType>(pointerElementType);
+            if(str->isOpaque() && str->getName().find("opencl.image") == 0)
+            {
+                auto dimensions = str->getName().find('3') != llvm::StringRef::npos ?
+                    3 :
+                    (str->getName().find('2') != llvm::StringRef::npos ? 2 : 1);
+                auto isImageArray = str->getName().find("array") != llvm::StringRef::npos;
+                auto isImageBuffer = str->getName().find("buffer") != llvm::StringRef::npos;
+                auto isSampled = false;
 
-            return addToMap(DataType(module.createImageType(
-                                static_cast<uint8_t>(dimensions), isImageArray, isImageBuffer, isSampled)),
-                type, typesMap);
+                return addToMap(DataType(module.createImageType(
+                                    static_cast<uint8_t>(dimensions), isImageArray, isImageBuffer, isSampled)),
+                    type, typesMap);
+            }
         }
     }
     if(type->isStructTy())
@@ -617,7 +635,8 @@ DataType BitcodeReader::toDataType(Module& module, const llvm::Type* type, Optio
     }
     if(type->isPointerTy())
     {
-        DataType elementType = toDataType(module, type->getPointerElementType());
+        const llvm::Type* pointerElementType = getPointerElementType(type);
+        DataType elementType = pointerElementType != nullptr ? toDataType(module, pointerElementType) : TYPE_UNKNOWN;
         return DataType(module.createPointerType(elementType,
             overrideAddressSpace.value_or(toAddressSpace(static_cast<int32_t>(type->getPointerAddressSpace())))));
     }
@@ -640,11 +659,16 @@ static ParameterDecorations toParameterDecorations(const llvm::Argument& arg, Da
         deco = add_flag(deco, ParameterDecorations::READ_ONLY);
     if(type.getImageType())
     {
-        const llvm::StructType* str = llvm::cast<const llvm::StructType>(arg.getType()->getPointerElementType());
-        if(str->getName().find("ro_t") != std::string::npos)
-            deco = add_flag(deco, ParameterDecorations::READ_ONLY, ParameterDecorations::INPUT);
-        else if(str->getName().find("wo_t") != std::string::npos)
-            deco = add_flag(deco, ParameterDecorations::OUTPUT);
+        if(const auto* pointerElementType = getPointerElementType(arg.getType()))
+        {
+            if(const auto* str = llvm::dyn_cast<const llvm::StructType>(pointerElementType))
+            {
+                if(str->getName().find("ro_t") != std::string::npos)
+                    deco = add_flag(deco, ParameterDecorations::READ_ONLY, ParameterDecorations::INPUT);
+                else if(str->getName().find("wo_t") != std::string::npos)
+                    deco = add_flag(deco, ParameterDecorations::OUTPUT);
+            }
+        }
     }
     if(arg.hasInAllocaAttr() && isKernel)
     {
@@ -930,13 +954,17 @@ void BitcodeReader::parseInstruction(
     }
     case MemoryOps::Alloca:
     {
-        const llvm::AllocaInst* alloca = llvm::cast<const llvm::AllocaInst>(&inst);
-        // for arrays, the allocated type is the array type, so we don't need to handle them special here
-        const DataType contentType = toDataType(module, alloca->getAllocatedType());
-        const DataType pointerType = toDataType(module, alloca->getType());
-        unsigned alignment = alloca->getAlignment();
-        auto it = method.stackAllocations.emplace(
-            StackAllocation(("%" + alloca->getName()).str(), pointerType, contentType.getInMemoryWidth(), alignment));
+                const llvm::AllocaInst* alloca = llvm::cast<const llvm::AllocaInst>(&inst);
+                // for arrays, the allocated type is the array type, so we don't need to handle them special here
+                const DataType contentType = toDataType(module, alloca->getAllocatedType());
+                const DataType pointerType = toDataType(module, alloca->getType());
+        #if LLVM_LIBRARY_VERSION >= 100
+                unsigned alignment = alloca->getAlign().value();
+        #else
+                unsigned alignment = alloca->getAlignment();
+        #endif
+                auto it = method.stackAllocations.emplace(
+                    StackAllocation(("%" + alloca->getName()).str(), pointerType, contentType.getInMemoryWidth(), alignment));
         localMap[alloca] = &(*it.first);
         CPPLOG_LAZY(
             logging::Level::DEBUG, log << "Reading stack allocation: " << it.first->to_string() << logging::endl);
