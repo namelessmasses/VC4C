@@ -9,12 +9,12 @@
 
 #if __has_include(<variant>) && defined(__cpp_lib_variant) && __cpp_lib_variant >= 201603
 #include <variant>
-namespace vc4
+namespace vc4c
 {
     template <typename... Types>
     using Variant = std::variant<Types...>;
     namespace VariantNamespace = std;
-} // namespace vc4
+} // namespace vc4c
 
 #elif __has_include(<tr1/variant>)
 #include <tr1/variant>
