@@ -103,7 +103,10 @@ static std::unique_ptr<clang::CompilerInstance> createInstance(
 
     instance->getTargetOpts().Triple = "spir-unknown-unknown";
 
-#if LLVM_LIBRARY_VERSION >= 120
+#if LLVM_LIBRARY_VERSION >= 170
+    clang::LangOptions::setLangDefaults(instance->getLangOpts(), INPUT_LANGUAGE, llvm::Triple("spir-unknown-unknown"),
+        instance->getPreprocessorOpts().Includes, clang::LangStandard::lang_opencl12);
+#elif LLVM_LIBRARY_VERSION >= 120
     clang::CompilerInvocation::setLangDefaults(instance->getLangOpts(), INPUT_LANGUAGE,
         llvm::Triple("spir-unknown-unknown"), instance->getPreprocessorOpts().Includes,
         clang::LangStandard::lang_opencl12);
