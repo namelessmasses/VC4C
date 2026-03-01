@@ -991,9 +991,13 @@ std::size_t optimizations::eliminateRedundantBitOp(const Module& module, Method&
                     offset = 32 - offset;
                     mask = offset == 32 ? 0xFFFFFFFF : (1u << offset) - 1u;
                 }
+                auto writerSecondConstant = writer && writer->getSecondArg() ?
+                    writer->getSecondArg()->getConstantValue() :
+                    NO_VALUE;
+                auto opSecondConstant = op->getSecondArg() ? op->getSecondArg()->getConstantValue() : NO_VALUE;
                 if(mask != uint32_t{0xFFFFFFFF} && writer && writer->op == OP_SHL && !writer->hasPackMode() &&
-                    writer->getSecondArg() &&
-                    writer->getSecondArg()->getConstantValue() == op->getSecondArg()->getConstantValue())
+                    writerSecondConstant && opSecondConstant &&
+                    writerSecondConstant.value() == opSecondConstant.value())
                 {
                     CPPLOG_LAZY(logging::Level::DEBUG,
                         log << "Replacing redundant left and right shift with same offset to and with mask: "

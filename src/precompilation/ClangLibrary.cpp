@@ -218,7 +218,7 @@ static void writeOutput(PrecompilationResult<ResultType>& output, const Optional
 {
     if(!result && !outputFilePath)
         throw CompilationError(CompilationStep::PRECOMPILATION, "No output for clang library compilation");
-    if(outputFilePath && outputFilePath == output.getFilePath())
+    if(outputFilePath && *outputFilePath == *output.getFilePath())
         return; // nothing to do
     else if(outputFilePath && !output)
         output = PrecompilationResult<ResultType>{*outputFilePath};

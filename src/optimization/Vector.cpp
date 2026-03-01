@@ -1484,7 +1484,8 @@ static Optional<AccumulationInfo> determineAccumulation(const Local* loc, const 
     }
 
     auto initialValue = initialWrite->precalculate().first;
-    if(initialValue == op->op.getLeftIdentity())
+    auto leftIdentity = op->op.getLeftIdentity();
+    if(initialValue.has_value() && leftIdentity.has_value() && *initialValue == *leftIdentity)
         // no initial value to add
         initialValue = NO_VALUE;
     else if(!initialValue || !initialValue->type.isScalarType() || !op->op.isAssociative() || !op->op.isCommutative() ||
@@ -1538,8 +1539,15 @@ static Optional<AccumulationInfo> determineAccumulation(const Local* loc, const 
                     continue;
                 auto firstWriter = *writers.begin();
                 auto secondWriter = *(++writers.begin());
-                if((firstWriter == reader && secondWriter->getMoveSource() != initialWrite->getMoveSource()) ||
-                    (secondWriter == reader && firstWriter->getMoveSource() != initialWrite->getMoveSource()))
+                auto hasSameMoveSource = [](const Optional<Value>& left, const Optional<Value>& right) -> bool {
+                    if(left.has_value() != right.has_value())
+                        return false;
+                    return !left || *left == *right;
+                };
+                if((firstWriter == reader &&
+                       !hasSameMoveSource(secondWriter->getMoveSource(), initialWrite->getMoveSource())) ||
+                    (secondWriter == reader &&
+                        !hasSameMoveSource(firstWriter->getMoveSource(), initialWrite->getMoveSource())))
                     // check same initial value set
                     continue;
                 if(std::any_of(readers.begin(), readers.end(),

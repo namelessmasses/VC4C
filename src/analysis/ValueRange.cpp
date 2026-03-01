@@ -380,7 +380,7 @@ void ValueRange::update(const Optional<Value>& constant, const FastMap<const Loc
         extendBoundaries(
             *lit, constant->type.isFloatingType(), constant->checkImmediate(), constant->isUnsignedInteger());
     }
-    else if(auto vec = constant & &Value::checkVector)
+    else if(auto vec = constant ? constant->checkVector() : nullptr)
     {
         if(constant->type.isFloatingType())
         {
