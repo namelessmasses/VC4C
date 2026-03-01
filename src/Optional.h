@@ -233,12 +233,12 @@ namespace vc4c
 
         T value_or(const T& defaultValue) const
         {
-            return has_value() ? **this : std::forward<const T>(defaultValue);
+            return this->has_value() ? **this : std::forward<const T>(defaultValue);
         }
 
         std::string to_string() const
         {
-            return has_value() ? (*this)->to_string() : "-";
+            return this->has_value() ? (*this)->to_string() : "-";
         }
 
 #if __cplusplus < 201703L
@@ -252,7 +252,7 @@ namespace vc4c
         // implicitly convertible to Optional<Type>
         [[deprecated]] bool operator&(const std::function<bool(const T&)>& func) const
         {
-            return has_value() && func(**this);
+            return this->has_value() && func(**this);
         }
 
         template <typename Func>
@@ -261,7 +261,7 @@ namespace vc4c
             bool>
         operator&(Func&& func) const
         {
-            return has_value() && ((**this).*func)();
+            return this->has_value() && ((**this).*func)();
         }
 
         template <typename Func>
@@ -270,55 +270,55 @@ namespace vc4c
             bool>
         operator&(Func&& func) const
         {
-            return has_value() && func(**this);
+            return this->has_value() && func(**this);
         }
 
         template <typename R>
         [[deprecated]] Optional<R> operator&(const std::function<Optional<R>(const T&)>& func) const
         {
-            return has_value() ? func(**this) : Optional<R>{};
+            return this->has_value() ? func(**this) : Optional<R>{};
         }
 
         template <typename R>
         [[deprecated]] R* operator&(const std::function<R*(const T&)>& func) const
         {
-            return has_value() ? func(**this) : nullptr;
+            return this->has_value() ? func(**this) : nullptr;
         }
 
         template <typename Func>
         std::enable_if_t<std::is_pointer<std::result_of_t<Func(const T&)>>::value, std::result_of_t<Func(const T&)>>
         operator&(Func&& func) const
         {
-            return has_value() ? func(**this) : nullptr;
+            return this->has_value() ? func(**this) : nullptr;
         }
 
         template <typename S = T>
         typename std::enable_if<std::is_class<S>::value, bool>::type operator&(bool (S::*func)() const) const
         {
-            return has_value() && ((**this).*func)();
+            return this->has_value() && ((**this).*func)();
         }
 
         template <typename R, typename S = T>
         typename std::enable_if<std::is_class<S>::value, Optional<R>>::type operator&(
             Optional<R> (S::*func)() const) const
         {
-            return has_value() ? ((**this).*func)() : Optional<R>{};
+            return this->has_value() ? ((**this).*func)() : Optional<R>{};
         }
 
         template <typename R, typename S = T>
         typename std::enable_if<std::is_class<S>::value, R*>::type operator&(R* (S::*func)() const) const
         {
-            return has_value() ? ((**this).*func)() : nullptr;
+            return this->has_value() ? ((**this).*func)() : nullptr;
         }
 
         const Optional<T>& operator|(const Optional<T>& other) const&
         {
-            return has_value() ? *this : other;
+            return this->has_value() ? *this : other;
         }
 
         Optional<T> operator|(Optional<T>&& other) &&
         {
-            return has_value() ? *this : other;
+            return this->has_value() ? *this : other;
         }
     };
 
