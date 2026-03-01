@@ -328,6 +328,20 @@ namespace vc4c
         return Optional<R>(value);
     }
 
+    template <typename T>
+    bool operator==(const Optional<T>& o1, const Optional<T>& o2)
+    {
+        if(o1.has_value())
+            return o2.has_value() && *o1 == *o2;
+        return !o2.has_value();
+    }
+
+    template <typename T>
+    bool operator!=(const Optional<T>& o1, const Optional<T>& o2)
+    {
+        return !(o1 == o2);
+    }
+
     /*
      * Helper basis type to assert a type not being copyable
      */
