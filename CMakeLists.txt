@@ -17,7 +17,7 @@ option(LLVMLIB_FRONTEND "Enables the front-end using the LLVM library to read LL
 # Option whether to enable code coverage analysis via gcov
 option(ENABLE_COVERAGE "Enables collection of code coverage via gcov" OFF)
 # Option whether to enable use of the CLang library (EXPERIMENTAL)
-option(CLANG_LIBRARY "Uses the libclang library for compilation, uses the clang executable otherwise" OFF)
+option(CLANG_LIBRARY "Uses the libclang library for compilation, uses the clang executable otherwise" ON)
 # Option whether to enable more compile-time checks
 option(ADVANCED_CHECKS "Enable advanced compile-time checks" OFF)
 # Option to skipping pre-compiling the VC4CLStdLib standard-library headers at compile time. NOTE: The headers still need to be pre-compiled before execution!
@@ -49,8 +49,8 @@ endif()
 
 project (VC4C VERSION 0.4.${BUILD_NUMBER})
 
-# Set C++ standard to C++14 without any extensions (e.g. GNU)
-set(CMAKE_CXX_STANDARD 14)
+# Set C++ standard to C++17 without any extensions (e.g. GNU)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
